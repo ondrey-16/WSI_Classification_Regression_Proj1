@@ -14,3 +14,7 @@ Następnie należy pobrać wszystkie wymagane moduły zapisane w pliku requireme
 ```shell
 pip install -r .\requirements.txt
 ```
+
+## Dodanie zbiorów danych
+W folderach Classification i Regression należy utworzyć foldery *data* i do nich dodać pliki .csv zawierające zbiory
+danych, na których będą tworzone modele.
