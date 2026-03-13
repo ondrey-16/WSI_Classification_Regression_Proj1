@@ -20,7 +20,7 @@ class TrainingReporter:
 
     def run_cross_validation(self, cv=5):
         print("Start cross validation...")
-        kfold = KFold(n_splits=cv, shuffle=True)
+        kfold = KFold(n_splits=cv, shuffle=True, random_state=42)
 
         rmse_scores = []
 
