@@ -2,34 +2,14 @@ from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.pipeline import Pipeline
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.impute import KNNImputer
+from sklearn.utils.validation import check_is_fitted
 import numpy as np
-from abc import ABC, abstractmethod
+import pandas as pd
 
-class BasePipeline(ABC, BaseEstimator, TransformerMixin):
-    @abstractmethod
-    def fit(self, X, y=None):
-        pass
-    @abstractmethod
-    def transform(self, X, y=None):
-        pass
-
-class DropColumns(BasePipeline):
-    def __init__(self, drop_columns : list):
-        self.drop_columns = drop_columns
-        self.transform_output = None
-    def set_output(self, *, transform=None):
-        self.transform_output = transform
-    def fit(self, X, y=None):
-        return self
-    def transform(self, X, y=None):
-        X = X.copy()
-        return X.drop(self.drop_columns, axis=1)
-
-class FillMasVnrTypeNans(BasePipeline):
+class FillMasVnrTypeNans(BaseEstimator, TransformerMixin):
     def __init__(self):
-        self.transform_output = None
-    def set_output(self, *, transform=None):
-        self.transform_output = transform
+        pass
     def fit(self, X, y=None):
         return self
     def transform(self, X, y=None):
@@ -37,27 +17,37 @@ class FillMasVnrTypeNans(BasePipeline):
         X["MasVnrType"] = X["MasVnrType"].fillna("?")
         return X
 
-class RemoveOutliers(BasePipeline):
-    def __init__(self, columns : list[str], ranges: list[int]):
+class FillNumericValues(BaseEstimator, TransformerMixin):
+    def __init__(self, columns: list[str]):
         self.columns = columns
-        self.ranges = ranges
-        self.transform_output = None
-    def set_output(self, *, transform=None):
-            self.transform_output = transform
+        self.imputer = KNNImputer(n_neighbors=5)
+        self.is_fitted = False
+    def fit(self, X, y=None):
+        self.imputer.fit(X[self.columns])
+        self.fitted_ = True
+        return self
+    def transform(self, X, y=None):
+        check_is_fitted(self)
+        X = X.copy()
+        X[self.columns] = self.imputer.transform(X[self.columns])
+        return X
+
+class SplitToBins(BaseEstimator, TransformerMixin):
+    def __init__(self, columns: list[str], num_bins: list[int]):
+        self.columns = columns
+        self.num_bins = num_bins
     def fit(self, X, y=None):
         return self
     def transform(self, X, y=None):
         X = X.copy()
         for i in range(len(self.columns)):
-            X = X[X[self.columns[i]] <= self.ranges[i]]
+            X[self.columns[i]] = pd.cut(X[self.columns[i]], self.num_bins[i])
         return X
 
-class LogTransform(BasePipeline):
+class LogTransform(BaseEstimator, TransformerMixin):
     def __init__(self, log_columns : list):
         self.log_columns = log_columns
         self.transform_output = None
-    def set_output(self, *, transform=None):
-            self.transform_output = transform
     def fit(self, X, y=None):
         return self
     def transform(self, X, y=None):
@@ -66,41 +56,40 @@ class LogTransform(BasePipeline):
             X[col] = np.log1p(X[col])
         return X
 
-class NumCatTransform(BasePipeline):
+class NumCatTransform(BaseEstimator, TransformerMixin):
     def __init__(self):
         self.num_columns = []
         self.cat_columns = []
         self.column_transformer = None
-        self.transform_output = None
-    def set_output(self, *, transform=None):
-        self.transform_output = transform
+        self.is_fitted = False
     def fit(self, X, y=None):
-        self.num_columns = X.select_dtypes(include=[np.number]).columns.tolist()
-        self.cat_columns = X.select_dtypes(exclude=[np.number]).columns.tolist()
+        self.num_columns = X.select_dtypes(include=["int64", "float64"]).columns.tolist()
+        self.cat_columns = X.select_dtypes(include=["object"]).columns.tolist()
 
         self.column_transformer = ColumnTransformer([
             ("num", StandardScaler(), self.num_columns),
             ("cat", OneHotEncoder(handle_unknown="ignore", sparse_output=False), self.cat_columns),
         ])
-        self.column_transformer.set_output(transform=self.transform_output)
 
         self.column_transformer.fit(X, y)
+        self.fitted_ = True
         return self
     def transform(self, X, y=None):
+        check_is_fitted(self)
         X = X.copy()
         return self.column_transformer.transform(X)
 
 
-def make_pipeline() -> Pipeline:
-    drop_columns = ["Id"]
-    log_columns = ["LotArea"]
-    rem_columns = ["LotArea", "GrLivArea"]
-    ranges = [100000, 5000]
+def make_preprocessing_pipeline() -> Pipeline:
+    to_fill_columns = ["MasVnrArea", "LotFrontage", "GarageYrBlt"]
+    log_columns = ["LotArea", "BsmtUnfSF"]
+    split_to_bins_columns = ["YearBuilt", "YearRemodAdd", "BsmtFinSF2", "GarageYrBlt"]
+    num_bins = [6, 6, 3, 6]
 
     return Pipeline([
-        ('drop_columns', DropColumns(drop_columns)),
-        ('fill_nans', FillMasVnrTypeNans()),
-        ('remove_outliers', RemoveOutliers(rem_columns, ranges)),
+        ('fill_mas_vnr_type_nans', FillMasVnrTypeNans()),
+        ('fill_num_nans', FillNumericValues(to_fill_columns)),
+        ('split_to_bins', SplitToBins(split_to_bins_columns, num_bins)),
         ('log_transform', LogTransform(log_columns)),
         ("num_cat_transform", NumCatTransform()),
     ])
