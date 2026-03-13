@@ -64,7 +64,7 @@ class NumCatTransform(BaseEstimator, TransformerMixin):
         self.is_fitted = False
     def fit(self, X, y=None):
         self.num_columns = X.select_dtypes(include=["int64", "float64"]).columns.tolist()
-        self.cat_columns = X.select_dtypes(include=["object"]).columns.tolist()
+        self.cat_columns = X.select_dtypes(include=["object", "category"]).columns.tolist()
 
         self.column_transformer = ColumnTransformer([
             ("num", StandardScaler(), self.num_columns),
