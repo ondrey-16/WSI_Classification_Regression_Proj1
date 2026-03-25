@@ -1,5 +1,5 @@
 import numpy as np
-from sklearn.model_selection import train_test_split, KFold, cross_val_score
+from sklearn.model_selection import train_test_split, KFold, cross_val_score, GridSearchCV
 from sklearn.metrics import mean_squared_error
 from Regression.training_model import CustomXGBRegressorModel
 
@@ -42,3 +42,19 @@ class TrainingReporter:
         print("RMSE for cross validation: {} +- {}".format(mean_rmse, std_rmse))
         print("Cross validation finished!")
         print("---------------------------------------------------")
+
+    def run_grid_search(self, cv=5):
+        print("Start grid search...")
+        grid_params = {
+            'model__n_estimators': [100, 500, 1000, 2000],
+            'model__learning_rate': [0.01, 0.05, 0.1, 0.2],
+            'model__max_depth': [3, 4, 5, 6],
+            'model__min_child_weight': [1, 2, 3, 4],
+        }
+
+        model = self.model.get_new_instance().model
+        grid = GridSearchCV(model, param_grid=grid_params, cv=cv, scoring='neg_root_mean_squared_error', n_jobs=-1)
+        grid.fit(self.X_train, self.y_train)
+
+        print("Grid finished!")
+        print('Best params: {}'.format(grid.best_params_))
