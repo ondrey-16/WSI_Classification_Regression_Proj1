@@ -5,17 +5,6 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.impute import KNNImputer
 from sklearn.utils.validation import check_is_fitted
 import numpy as np
-import pandas as pd
-
-class FillMasVnrTypeNans(BaseEstimator, TransformerMixin):
-    def __init__(self):
-        pass
-    def fit(self, X, y=None):
-        return self
-    def transform(self, X, y=None):
-        X = X.copy()
-        X["MasVnrType"] = X["MasVnrType"].fillna("?")
-        return X
 
 class FillNumericValues(BaseEstimator, TransformerMixin):
     def __init__(self, columns: list[str]):
@@ -30,18 +19,7 @@ class FillNumericValues(BaseEstimator, TransformerMixin):
         check_is_fitted(self)
         X = X.copy()
         X[self.columns] = self.imputer.transform(X[self.columns])
-        return X
-
-class SplitToBins(BaseEstimator, TransformerMixin):
-    def __init__(self, columns: list[str], num_bins: list[int]):
-        self.columns = columns
-        self.num_bins = num_bins
-    def fit(self, X, y=None):
-        return self
-    def transform(self, X, y=None):
-        X = X.copy()
-        for i in range(len(self.columns)):
-            X[self.columns[i]] = pd.cut(X[self.columns[i]], self.num_bins[i])
+        X["MasVnrType"] = X["MasVnrType"].fillna("?")
         return X
 
 class LogTransform(BaseEstimator, TransformerMixin):
@@ -83,13 +61,9 @@ class NumCatTransform(BaseEstimator, TransformerMixin):
 def make_preprocessing_pipeline() -> Pipeline:
     to_fill_columns = ["MasVnrArea", "LotFrontage", "GarageYrBlt"]
     log_columns = ["LotArea", "BsmtUnfSF"]
-    split_to_bins_columns = ["YearBuilt", "YearRemodAdd", "BsmtFinSF2", "GarageYrBlt"]
-    num_bins = [6, 6, 3, 6]
 
     return Pipeline([
-        ('fill_mas_vnr_type_nans', FillMasVnrTypeNans()),
         ('fill_num_nans', FillNumericValues(to_fill_columns)),
-        ('split_to_bins', SplitToBins(split_to_bins_columns, num_bins)),
         ('log_transform', LogTransform(log_columns)),
         ("num_cat_transform", NumCatTransform()),
     ])

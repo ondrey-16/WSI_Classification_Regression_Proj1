@@ -44,10 +44,3 @@ class CustomXGBRegressorModel :
                                        max_depth=self.max_depth, min_child_weight=self.min_child_weight,
                                        subsample=self.subsample, colsample_bytree=self.colsample_bytree,
                                        reg_alpha=self.reg_alpha, reg_lambda=self.reg_lambda)
-
-def build_model_from_grid_params(params):
-    model_params = {
-        key.replace('model__', ''): value
-        for key, value in params.items()
-    }
-    return CustomXGBRegressorModel(**model_params)
