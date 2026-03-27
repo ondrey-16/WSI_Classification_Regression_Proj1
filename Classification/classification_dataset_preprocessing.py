@@ -6,6 +6,7 @@ from sklearn.utils.validation import check_is_fitted
 import pandas as pd
 from imblearn.over_sampling import SMOTE
 from sklearn.preprocessing import LabelEncoder
+from sklearn.compose import ColumnTransformer
 
 class BalanceClasses(BaseEstimator, TransformerMixin):
     def __init__(self, target_column: str):
@@ -127,7 +128,6 @@ class ComputeRelativeDeltas(BaseEstimator, TransformerMixin):
 
         return pd.DataFrame(result, index=X.index)
 
-
 def make_preprocessing_pipeline() -> Pipeline:
     return Pipeline([
         ("standarize_numeric", StandardizeNumeric()),
@@ -150,8 +150,6 @@ def make_training_pipeline() -> ImbPipeline:
         ("standarize_numeric", StandardizeNumeric()),
         ("balance_classes", SMOTE(random_state=42)),
     ])
-
-
 
 def make_standarize_pipeline() -> Pipeline:
     return Pipeline([

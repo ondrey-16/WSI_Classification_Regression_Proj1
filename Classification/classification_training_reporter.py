@@ -1,7 +1,6 @@
 import numpy as np
 from sklearn.model_selection import StratifiedKFold, RandomizedSearchCV
-from classification_xbg_model import CustomXGBClassifierModel
-from sklearn.metrics import accuracy_score, roc_auc_score, f1_score, classification_report, recall_score
+from sklearn.metrics import accuracy_score, roc_auc_score, f1_score, recall_score
 
 
 class TrainingReporter:
