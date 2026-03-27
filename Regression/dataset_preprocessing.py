@@ -60,7 +60,7 @@ class NumCatTransform(BaseEstimator, TransformerMixin):
 
 def make_preprocessing_pipeline() -> Pipeline:
     to_fill_columns = ["MasVnrArea", "LotFrontage", "GarageYrBlt"]
-    log_columns = ["LotArea", "BsmtUnfSF"]
+    log_columns = ["LotArea", "LotFrontage", "BsmtUnfSF", "YearBuilt", "GrLivArea", "BsmtFinSF1", "GarageYrBlt", "YearRemodAdd"]
 
     return Pipeline([
         ('fill_num_nans', FillNumericValues(to_fill_columns)),

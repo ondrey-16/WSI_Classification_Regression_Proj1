@@ -1,28 +1,35 @@
 import numpy as np
 import os
 import joblib
-from sklearn.model_selection import KFold, GridSearchCV, RandomizedSearchCV
+from sklearn.model_selection import KFold, GridSearchCV, RandomizedSearchCV, RepeatedKFold
 from sklearn.metrics import mean_squared_error, r2_score
+
 from Regression.training_model import CustomXGBRegressorModel
 
 class TrainingReporter:
-    def __init__(self, model: CustomXGBRegressorModel, X_train, X_test, y_train, y_test):
+    def __init__(self, model: CustomXGBRegressorModel, X_train, X_test, y_train, y_test, filename_prefix: str):
         self.model = model
         self.original_model = model
         self.X_train = X_train
         self.X_test = X_test
         self.y_train = y_train
         self.y_test = y_test
+        self.filename_prefix = filename_prefix
 
     def run_cross_validation(self, cv=5):
         print("Start cross validation...")
-        kfold = KFold(n_splits=cv, shuffle=True, random_state=42)
+        #kfold = KFold(n_splits=cv, shuffle=True, random_state=42)
+        kfold = RepeatedKFold(n_repeats=3, n_splits=cv, random_state=42)
 
         rmse_scores = []
         mse_scores = []
         r_squared_scores = []
 
+        it = 1
         for fold_idx, (train_idx, val_idx) in enumerate(kfold.split(self.X_train)):
+            if (fold_idx % cv == 0):
+                print("Iteration {}".format(it))
+                it += 1
             model = self.original_model.get_new_instance()
             X_fold_train, X_fold_val = self.X_train.iloc[train_idx], self.X_train.iloc[val_idx]
             y_fold_train, y_fold_val = self.y_train.iloc[train_idx], self.y_train.iloc[val_idx]
@@ -36,7 +43,7 @@ class TrainingReporter:
             r_squared = r2_score(y_fold_val, predictions)
             r_squared_scores.append(r_squared)
 
-            print("Fold {}: RMSE = {}, MSE = {}, R^2 = {}".format(fold_idx, rmse, mse, r_squared))
+            print("Fold {}: RMSE = {}, MSE = {}, R^2 = {}".format(fold_idx % cv, rmse, mse, r_squared))
 
         mean_rmse = np.mean(rmse_scores)
         std_rmse = np.std(rmse_scores)
@@ -58,19 +65,12 @@ class TrainingReporter:
         print("---------------------------------------------------")
         self.save_model('CV_Model.pkl')
 
-    def run_grid_search(self, cv=5):
+    def run_grid_search(self, param_grid, cv=5):
         print("Start grid search...")
-        grid_params = {
-            'model__n_estimators': [500, 1000, 2000],
-            'model__learning_rate': [0.01, 0.05, 0.1],
-            'model__max_depth': [3, 4, 5],
-            'model__min_child_weight': [1, 2, 3],
-            'model__subsample': [0.6, 0.8],
-            'model__colsample_bytree': [0.6, 0.8],
-        }
 
         model = self.original_model.get_new_instance().model
-        grid = GridSearchCV(model, param_grid=grid_params, cv=cv,
+        cv_splitter = RepeatedKFold(n_repeats=3, n_splits=cv, random_state=42)
+        grid = GridSearchCV(model, param_grid=param_grid, cv=cv_splitter,
                             scoring= {
                                     'rmse': 'neg_root_mean_squared_error',
                                     'mse': 'neg_mean_squared_error',
@@ -88,32 +88,13 @@ class TrainingReporter:
         print("---------------------------------------------------")
         self.save_model('GS_Model.pkl')
 
-    def run_randomized_search(self, cv=5):
+    def run_randomized_search(self, params_distributions, cv=5):
         print("Start randomized grid search...")
 
-        n_estimators_params = np.arange(100, 2001, 200)
-        learning_rate_params = [0.01, 0.3, 0.05, 0.07, 0.1, 0.15]
-        max_depth_params = np.arange(1, 9)
-        min_child_weight_params = np.arange(1, 9)
-        subsample_params = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-        colsample_bytree_params = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-        reg_alpha_params = [0, 0.01, 0.1, 0.4, 0.6, 0.8, 1.0, 5.0]
-        reg_lambda_params = [0, 0.01, 0.1, 0.4, 0.6, 0.8, 1.0, 5.0, 10.0]
-
-        random_grid_params = {
-            'model__n_estimators': n_estimators_params,
-            'model__learning_rate': learning_rate_params,
-            'model__max_depth': max_depth_params,
-            'model__min_child_weight': min_child_weight_params,
-            'model__subsample': subsample_params,
-            'model__colsample_bytree': colsample_bytree_params,
-            'model__reg_alpha': reg_alpha_params,
-            'model__reg_lambda': reg_lambda_params,
-        }
-
         model = self.original_model.get_new_instance().model
-        random_grid = RandomizedSearchCV(estimator=model, param_distributions=random_grid_params,
-                                         cv=cv, scoring= {
+        cv_splitter = RepeatedKFold(n_repeats=3, n_splits=cv, random_state=42)
+        random_grid = RandomizedSearchCV(estimator=model, param_distributions=params_distributions,
+                                         cv=cv_splitter, scoring= {
                                                     'rmse': 'neg_root_mean_squared_error',
                                                     'mse': 'neg_mean_squared_error',
                                                     'r2': 'r2'},
@@ -132,13 +113,13 @@ class TrainingReporter:
 
     def save_model(self, model_filename):
         os.makedirs('saved_models', exist_ok=True)
-        path = os.path.join('saved_models', model_filename)
+        path = os.path.join('saved_models', '{}_{}'.format(self.filename_prefix, model_filename))
         joblib.dump(self.model, path)
         print("Model saved in: {}".format(path))
 
     def save_test_set(self):
         os.makedirs('saved_models', exist_ok=True)
-        path = os.path.join('saved_models', 'test_set.csv')
+        path = os.path.join('saved_models', '{}_test_set.csv'.format(self.filename_prefix))
         df = self.X_test.copy()
         df["target"] = self.y_test
         df.to_csv(path, index=False)
