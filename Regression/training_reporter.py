@@ -4,10 +4,10 @@ import joblib
 from sklearn.model_selection import KFold, GridSearchCV, RandomizedSearchCV, RepeatedKFold
 from sklearn.metrics import mean_squared_error, r2_score
 
-from Regression.training_model import CustomXGBRegressorModel
+from Regression.training_model import CustomRegressionModel
 
 class TrainingReporter:
-    def __init__(self, model: CustomXGBRegressorModel, X_train, X_test, y_train, y_test, filename_prefix: str):
+    def __init__(self, model: CustomRegressionModel, X_train, X_test, y_train, y_test, filename_prefix: str):
         self.model = model
         self.original_model = model
         self.X_train = X_train

@@ -6,7 +6,7 @@ from sklearn.impute import KNNImputer
 from sklearn.utils.validation import check_is_fitted
 import numpy as np
 
-class FillNumericValues(BaseEstimator, TransformerMixin):
+class FillNaNValues(BaseEstimator, TransformerMixin):
     def __init__(self, columns: list[str]):
         self.columns = columns
         self.imputer = KNNImputer(n_neighbors=5)
@@ -63,7 +63,7 @@ def make_preprocessing_pipeline() -> Pipeline:
     log_columns = ["LotArea", "LotFrontage", "BsmtUnfSF", "YearBuilt", "GrLivArea", "BsmtFinSF1", "GarageYrBlt", "YearRemodAdd"]
 
     return Pipeline([
-        ('fill_num_nans', FillNumericValues(to_fill_columns)),
+        ('fill_num_nans', FillNaNValues(to_fill_columns)),
         ('log_transform', LogTransform(log_columns)),
         ("num_cat_transform", NumCatTransform()),
     ])
